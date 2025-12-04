@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Diploma Wallet – Holder</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 16px;
+        padding: 24px 28px;
+        width: 100%;
+        max-width: 720px;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.6rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      h1 span {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #94a3b8;
+      }
+      .row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+      label {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      input,
+      textarea {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #4b5563;
+        padding: 0.6rem 0.75rem;
+        background: #020617;
+        color: #e5e7eb;
+        font-family: inherit;
+        font-size: 0.9rem;
+      }
+      textarea {
+        min-height: 140px;
+        resize: vertical;
+      }
+      button {
+        border-radius: 999px;
+        border: none;
+        padding: 0.55rem 1.3rem;
+        background: linear-gradient(to right, #22c55e, #16a34a);
+        color: #022c22;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      button.secondary {
+        background: transparent;
+        color: #e5e7eb;
+        border: 1px solid #4b5563;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+      }
+      .badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        border: 1px solid #4b5563;
+        color: #9ca3af;
+      }
+      .status {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: #a5b4fc;
+      }
+      .small {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>
+        Diploma Wallet
+        <span>Holder – student</span>
+      </h1>
+      <div class="badge">Proof-of-Concept · Verifiable Credential (JWT)</div>
+
+      <div class="row" style="margin-top: 1rem">
+        <div style="flex: 1 1 200px">
+          <label for="studentName">Naam student</label>
+          <input id="studentName" type="text" value="Demo Student" />
+        </div>
+        <div style="flex: 1 1 200px">
+          <label for="opleiding">Opleiding</label>
+          <input id="opleiding" type="text" value="Toegepaste Informatica" />
+        </div>
+        <div style="flex: 1 1 160px">
+          <label for="afstudeerdatum">Afstudeerdatum</label>
+          <input id="afstudeerdatum" type="date" value="2025-06-30" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btnReceive">
+          🎓 Ontvang diploma (plak JWT)
+        </button>
+        <button id="btnCopy" class="secondary" disabled>
+          📋 Kopieer credential
+        </button>
+      </div>
+
+      <div class="row" style="margin-top: 1rem">
+        <div style="flex: 1 1 100%">
+          <label for="vc">Opgeslagen VC JWT</label>
+          <textarea id="vc" placeholder="Plak hier de JWT-string van issuer.js"></textarea>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+      <div class="small">
+        Flow: de school genereert een gesigneerd diploma via
+        <code>issuer_interface.html</code> (Issuer). Jij plakt de ontvangen VC
+        JWT hier, slaat hem op in je wallet en kunt hem vervolgens delen met de
+        werkgever (Verifier), die hem controleert met
+        <code>verifier.js</code> of een eigen verifier-UI.
+      </div>
+    </div>
+
+    <script>
+      const vcTextarea = document.getElementById("vc");
+      const statusEl = document.getElementById("status");
+      const btnReceive = document.getElementById("btnReceive");
+      const btnCopy = document.getElementById("btnCopy");
+
+      function setStatus(msg) {
+        statusEl.textContent = msg || "";
+      }
+
+      function saveVC() {
+        const jwt = vcTextarea.value.trim();
+        if (!jwt) {
+          setStatus("Geen JWT ingevuld.");
+          return;
+        }
+        localStorage.setItem("diplomaVC", jwt);
+        btnCopy.disabled = false;
+        setStatus("Credential opgeslagen in localStorage onder sleutel 'diplomaVC'.");
+      }
+
+      btnReceive.addEventListener("click", () => {
+        saveVC();
+      });
+
+      btnCopy.addEventListener("click", async () => {
+        const jwt = localStorage.getItem("diplomaVC");
+        if (!jwt) {
+          setStatus("Geen opgeslagen credential gevonden.");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(jwt);
+          setStatus("JWT gekopieerd naar klembord – plak hem in de terminal bij verifier.js.");
+        } catch {
+          setStatus("Kon niet naar het klembord schrijven, kopieer handmatig uit het tekstvak.");
+        }
+      });
+
+      // Bij laden: check of er al een VC in localStorage staat
+      (function init() {
+        const existing = localStorage.getItem("diplomaVC");
+        if (existing) {
+          vcTextarea.value = existing;
+          btnCopy.disabled = false;
+          setStatus("Bestaand credential geladen uit localStorage.");
+        }
+      })();
+    </script>
+  </body>
+  </html>
+
+

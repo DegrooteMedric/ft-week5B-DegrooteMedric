@@ -1,0 +1,11 @@
+{
+  "//": "Kopieer deze file naar token/config.json en vul daar je echte secrets in. token/ staat in .gitignore.",
+  "issuerDid": "did:example:issuer",
+  "issuerPrivateKey": "0x<hex-private-key-hier>",
+  "issuerPublicKey": "0x<hex-public-key-hier>",
+  "trustedIssuers": [
+    "did:example:issuer"
+  ]
+}
+
+

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Diploma Controle – Verifier (Werkgever)</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #020617;
+        color: #e5e7eb;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        background: rgba(15, 23, 42, 0.95);
+        border-radius: 16px;
+        padding: 24px 28px;
+        width: 100%;
+        max-width: 720px;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.5);
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.7rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      h1 span {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #94a3b8;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid #4b5563;
+        color: #9ca3af;
+      }
+      label {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      textarea {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #4b5563;
+        padding: 0.6rem 0.75rem;
+        background: #020617;
+        color: #e5e7eb;
+        font-family: inherit;
+        font-size: 0.9rem;
+        min-height: 140px;
+        resize: vertical;
+      }
+      button {
+        border-radius: 999px;
+        border: none;
+        padding: 0.55rem 1.4rem;
+        background: linear-gradient(to right, #f97316, #ea580c);
+        color: #0b1120;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .status {
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+      }
+      .status.ok {
+        color: #6ee7b7;
+      }
+      .status.error {
+        color: #fca5a5;
+      }
+      pre {
+        margin-top: 0.75rem;
+        background: #020617;
+        border-radius: 8px;
+        border: 1px solid #4b5563;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.8rem;
+        max-height: 200px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .small {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>
+        Diploma Controle
+        <span>Verifier – werkgever</span>
+      </h1>
+      <div class="badge">Stap 3 · Werkgever verifieert het diploma</div>
+
+      <label for="jwtInput" style="margin-top: 1rem">VC JWT van de student</label>
+      <textarea
+        id="jwtInput"
+        placeholder="Plak hier de Verifiable Credential JWT die je van de student ontvangt."
+      ></textarea>
+
+      <div style="margin-top: 0.75rem">
+        <button id="btnVerify">🔐 Controleer diploma</button>
+      </div>
+
+      <div id="status" class="status"></div>
+      <pre id="details" style="display: none"></pre>
+
+      <div class="small">
+        Flow: de student (Holder) stuurt zijn gesigneerde diploma-VC (JWT) naar
+        jou. Jij plakt die hier en laat de Verifier-server
+        (<code>verifier.js serve</code>) de handtekening, issuer en vervaldatum
+        controleren.
+      </div>
+    </div>
+
+    <script>
+      const btnVerify = document.getElementById("btnVerify");
+      const jwtInput = document.getElementById("jwtInput");
+      const statusEl = document.getElementById("status");
+      const detailsEl = document.getElementById("details");
+
+      function setStatus(msg, type) {
+        statusEl.textContent = msg || "";
+        statusEl.className = "status" + (type ? " " + type : "");
+      }
+
+      function showDetails(obj) {
+        if (!obj) {
+          detailsEl.style.display = "none";
+          detailsEl.textContent = "";
+          return;
+        }
+        detailsEl.style.display = "block";
+        detailsEl.textContent = JSON.stringify(obj, null, 2);
+      }
+
+      btnVerify.addEventListener("click", async () => {
+        const jwt = jwtInput.value.trim();
+        if (!jwt) {
+          setStatus("Geen VC JWT ingevuld.", "error");
+          showDetails(null);
+          return;
+        }
+
+        setStatus("Bezig met verificatie bij de Verifier-server...", "");
+        showDetails(null);
+        btnVerify.disabled = true;
+
+        try {
+          const res = await fetch("http://localhost:3001/verify", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ jwt })
+          });
+
+          const data = await res.json();
+
+          if (!res.ok || !data.valid) {
+            setStatus(
+              "VC ongeldig – toegang geweigerd: " + (data.error || "onbekende fout"),
+              "error"
+            );
+            showDetails(null);
+            return;
+          }
+
+          setStatus("VC geldig – TOEGANG VERLEEND", "ok");
+          showDetails(data.payload);
+        } catch (err) {
+          console.error(err);
+          setStatus(
+            "Netwerkfout bij verbinden met de Verifier-server. Draait `node verifier.js serve`?",
+            "error"
+          );
+          showDetails(null);
+        } finally {
+          btnVerify.disabled = false;
+        }
+      });
+    </script>
+  </body>
+  </html>
+
+

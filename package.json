@@ -5,7 +5,7 @@
   "main": "issuer.js",
   "scripts": {
     "issuer": "node issuer.js",
-    "verifier": "node verifier.js"
+    "verifier": "node verifier.js serve"
   },
   "keywords": [
     "did",
@@ -17,6 +17,6 @@
   "license": "MIT",
   "dependencies": {
     "did-jwt": "^7.4.4",
-    "express": "^4.21.2"
+    "express": "^4.22.1"
   }
 }

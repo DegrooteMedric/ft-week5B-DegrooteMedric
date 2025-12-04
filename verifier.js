@@ -1,8 +1,9 @@
 // verifier.js
-// Verifieert een ontvangen diploma-credential (VC) JWT.
+// Verifier (werkgever): controleert diploma-credentials (VC JWT) via CLI of HTTP-API.
 
 const fs = require("fs");
 const path = require("path");
+const express = require("express");
 const { verifyJWT } = require("did-jwt");
 
 function loadConfig() {
@@ -34,16 +35,16 @@ async function verifyDiplomaVC(jwt) {
                   id: `${did}#owner`,
                   type: "Secp256k1VerificationKey2018",
                   controller: did,
-                  publicKeyHex: config.issuerPublicKey.replace(/^0x/, ""),
-                },
-              ],
-            },
+                  publicKeyHex: config.issuerPublicKey.replace(/^0x/, "")
+                }
+              ]
+            }
           };
         }
         throw new Error(`Onbekende DID: ${did}`);
-      },
+      }
     },
-    audience: undefined,
+    audience: undefined
   });
 
   // Authenticiteit: issuer moet vertrouwd zijn
@@ -60,10 +61,63 @@ async function verifyDiplomaVC(jwt) {
   return payload;
 }
 
+function startServer() {
+  const app = express();
+  const PORT = 3001;
+
+  // CORS zodat lokale HTML (file://) kan praten met de verifier
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
+  app.use(express.json());
+
+  app.post("/verify", async (req, res) => {
+    const { jwt, vcJwt, token } = req.body || {};
+    const incoming = jwt || vcJwt || token;
+
+    if (!incoming) {
+      return res
+        .status(400)
+        .json({ valid: false, error: "Body moet een JWT bevatten (jwt/vcJwt/token)" });
+    }
+
+    try {
+      const payload = await verifyDiplomaVC(incoming);
+      res.json({ valid: true, payload });
+    } catch (err) {
+      res
+        .status(400)
+        .json({ valid: false, error: err.message || "Onbekende verificatiefout" });
+    }
+  });
+
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", role: "verifier" });
+  });
+
+  app.listen(PORT, () => {
+    console.log(`Verifier-server draait op http://localhost:${PORT}`);
+  });
+}
+
 async function main() {
-  const jwt = process.argv[2];
+  // CLI-modus: node verifier.js "<JWT>" of server-modus: node verifier.js serve
+  const arg = process.argv[2];
+
+  if (arg === "serve") {
+    startServer();
+    return;
+  }
+
+  const jwt = arg;
   if (!jwt) {
-    console.error("Gebruik: node verifier.js <VC_JWT_STRING>");
+    console.error('Gebruik: node verifier.js "<VC_JWT_STRING>" of `node verifier.js serve`');
     process.exit(1);
   }
 
@@ -82,4 +136,6 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { verifyDiplomaVC };
+module.exports = { verifyDiplomaVC, startServer };
+
+

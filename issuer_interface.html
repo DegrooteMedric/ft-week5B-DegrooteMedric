@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Diploma Uitgifte – Issuer (School)</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #020617;
+        color: #e5e7eb;
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .card {
+        background: rgba(15, 23, 42, 0.95);
+        border-radius: 16px;
+        padding: 24px 28px;
+        width: 100%;
+        max-width: 720px;
+        box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.9);
+        border: 1px solid rgba(148, 163, 184, 0.5);
+      }
+      h1 {
+        margin-top: 0;
+        font-size: 1.7rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      h1 span {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #94a3b8;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        border: 1px solid #4b5563;
+        color: #9ca3af;
+      }
+      .row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+      label {
+        font-size: 0.85rem;
+        color: #9ca3af;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+      input,
+      textarea {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #4b5563;
+        padding: 0.6rem 0.75rem;
+        background: #020617;
+        color: #e5e7eb;
+        font-family: inherit;
+        font-size: 0.9rem;
+      }
+      textarea {
+        min-height: 140px;
+        resize: vertical;
+      }
+      button {
+        border-radius: 999px;
+        border: none;
+        padding: 0.55rem 1.4rem;
+        background: linear-gradient(to right, #38bdf8, #6366f1);
+        color: #0b1120;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      button.secondary {
+        background: transparent;
+        color: #e5e7eb;
+        border: 1px solid #4b5563;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 0.75rem;
+      }
+      .status {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: #a5b4fc;
+      }
+      .small {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-top: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>
+        Diploma Uitgifte
+        <span>Issuer – school</span>
+      </h1>
+      <div class="badge">Stap 1 · School signeert het diploma</div>
+
+      <form id="issueForm" style="margin-top: 1rem">
+        <div class="row">
+          <div style="flex: 1 1 260px">
+            <label for="name">Naam student</label>
+            <input
+              id="name"
+              type="text"
+              placeholder="Bijv. Alice Student"
+              required
+            />
+          </div>
+          <div style="flex: 1 1 260px">
+            <label for="opleiding">Opleiding</label>
+            <input
+              id="opleiding"
+              type="text"
+              placeholder="Bijv. Toegepaste Informatica"
+              required
+            />
+          </div>
+        </div>
+        <div class="row">
+          <div style="flex: 1 1 200px">
+            <label for="datum">Afstudeerdatum</label>
+            <input id="datum" type="date" required />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" id="btnIssue">
+            🎓 Genereer en signeer diploma
+          </button>
+          <button type="button" id="btnCopy" class="secondary" disabled>
+            📋 Kopieer VC JWT voor student
+          </button>
+        </div>
+      </form>
+
+      <div class="row" style="margin-top: 1rem">
+        <div style="flex: 1 1 100%">
+          <label for="jwtOutput">Gesigneerd diploma (VC JWT)</label>
+          <textarea
+            id="jwtOutput"
+            placeholder="Na uitgifte verschijnt hier de Verifiable Credential JWT die je aan de student kunt bezorgen."
+            readonly
+          ></textarea>
+        </div>
+      </div>
+
+      <div class="status" id="status"></div>
+      <div class="small">
+        Flow: vul de studentgegevens in en klik op
+        <strong>Genereer en signeer diploma</strong>. Stuur de VC JWT daarna
+        naar de student (Holder), die het credential kan opslaan in zijn/haar
+        wallet en tonen aan de werkgever (Verifier).
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("issueForm");
+      const statusEl = document.getElementById("status");
+      const jwtOutput = document.getElementById("jwtOutput");
+      const btnIssue = document.getElementById("btnIssue");
+      const btnCopy = document.getElementById("btnCopy");
+
+      function setStatus(msg) {
+        statusEl.textContent = msg || "";
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setStatus("");
+
+        const name = document.getElementById("name").value.trim();
+        const opleiding = document.getElementById("opleiding").value.trim();
+        const datum = document.getElementById("datum").value;
+
+        if (!name || !opleiding || !datum) {
+          setStatus("Alle velden zijn verplicht.");
+          return;
+        }
+
+        btnIssue.disabled = true;
+        setStatus("Diploma wordt gesigneerd door de Issuer...");
+
+        try {
+          const res = await fetch("http://localhost:3000/issue", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name,
+              opleiding,
+              afstudeerdatum: datum,
+            }),
+          });
+
+          const data = await res.json();
+          if (!res.ok || !data.vcJwt) {
+            setStatus("Fout bij uitgifte: " + (data.error || "onbekend"));
+            btnIssue.disabled = false;
+            return;
+          }
+
+          jwtOutput.value = data.vcJwt;
+          btnCopy.disabled = false;
+          setStatus(
+            "Diploma succesvol gesigneerd. Kopieer de JWT en bezorg hem aan de student."
+          );
+        } catch (err) {
+          console.error(err);
+          setStatus("Netwerkfout bij verbinden met de Issuer-server.");
+        } finally {
+          btnIssue.disabled = false;
+        }
+      });
+
+      btnCopy.addEventListener("click", async () => {
+        const jwt = jwtOutput.value.trim();
+        if (!jwt) {
+          setStatus("Geen VC JWT om te kopiëren.");
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(jwt);
+          setStatus("VC JWT gekopieerd. Plak hem in de wallet van de student.");
+        } catch {
+          setStatus("Kon niet naar het klembord schrijven, kopieer handmatig.");
+        }
+      });
+    </script>
+  </body>
+</html>

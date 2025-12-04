@@ -1,0 +1,22 @@
+{
+  "name": "ft-week5b-did-lab",
+  "version": "1.0.0",
+  "description": "Proof-of-concept DID & Verifiable Credentials lab (Issuer, Holder, Verifier)",
+  "main": "issuer.js",
+  "scripts": {
+    "issuer": "node issuer.js",
+    "verifier": "node verifier.js"
+  },
+  "keywords": [
+    "did",
+    "verifiable-credentials",
+    "lab",
+    "future-technologies"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "did-jwt": "^7.4.4",
+    "express": "^4.21.2"
+  }
+}
